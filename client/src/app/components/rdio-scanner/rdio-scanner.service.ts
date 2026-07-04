@@ -67,17 +67,40 @@ export class RdioScannerService implements OnDestroy {
     static LOCAL_STORAGE_KEY_LEGACY = 'rdio-scanner';
     static LOCAL_STORAGE_KEY_LFM = 'rdio-scanner-lfm';
     static LOCAL_STORAGE_KEY_PIN = 'rdio-scanner-pin';
+    static LOCAL_STORAGE_KEY_AGC = 'rdio-scanner-agc';
     static LOCAL_STORAGE_KEY_NOTCH = 'rdio-scanner-notch';
     static LOCAL_STORAGE_KEY_VOLUME = 'rdio-scanner-volume';
 
-    static NOTCH_FREQUENCY = 800;
-    static NOTCH_Q = 3;
+    // tuned to suppress loud emergency alert tones around 1 kHz while
+    // preserving voice: ~0.56 octave wide (Q ~2.5), single stage
+    static NOTCH_FREQUENCY = 993;
+    static NOTCH_Q = 2.5;
+    static NOTCH_STAGES = 1;
+
+    // agc: compress the loud-vs-quiet range, lift everything with makeup
+    // gain, then hard-limit as a clipping safety net
+    static AGC_THRESHOLD = -50;
+    static AGC_KNEE = 10;
+    static AGC_RATIO = 12;
+    static AGC_ATTACK = 0.003;
+    static AGC_RELEASE = 0.25;
+    static AGC_MAKEUP_GAIN_DB = 25;
+    static AGC_LIMITER_THRESHOLD = -3;
+    static AGC_LIMITER_RATIO = 20;
+    static AGC_LIMITER_ATTACK = 0.001;
+    static AGC_LIMITER_RELEASE = 0.1;
 
     event = new EventEmitter<RdioScannerEvent>();
 
     private audioContext: AudioContext | undefined;
 
-    private audioFilter: BiquadFilterNode | undefined;
+    private agc = false;
+
+    private agcCompressor: DynamicsCompressorNode | undefined;
+    private agcLimiter: DynamicsCompressorNode | undefined;
+    private agcMakeup: GainNode | undefined;
+
+    private audioFilters: BiquadFilterNode[] = [];
 
     private audioGain: GainNode | undefined;
 
@@ -129,6 +152,8 @@ export class RdioScannerService implements OnDestroy {
         private router: Router,
         @Inject(DOCUMENT) private document: Document,
     ) {
+        this.readAgc();
+
         this.readNotch();
 
         this.readVolume();
@@ -278,6 +303,18 @@ export class RdioScannerService implements OnDestroy {
 
     clearPin(): void {
         window?.localStorage.removeItem(RdioScannerService.LOCAL_STORAGE_KEY_PIN);
+    }
+
+    getAgc(): boolean {
+        return this.agc;
+    }
+
+    setAgc(agc: boolean): void {
+        this.agc = agc;
+
+        this.applyAgc();
+
+        window?.localStorage?.setItem(RdioScannerService.LOCAL_STORAGE_KEY_AGC, `${this.agc}`);
     }
 
     getNotch(): boolean {
@@ -543,7 +580,7 @@ export class RdioScannerService implements OnDestroy {
 
             this.audioSource = this.audioContext.createBufferSource();
             this.audioSource.buffer = buffer;
-            this.audioSource.connect(this.audioFilter || this.audioGain || this.audioContext.destination);
+            this.audioSource.connect(this.audioFilters[0] || this.audioGain || this.audioContext.destination);
             this.audioSource.onended = () => this.skip({ delay: true });
             this.audioSource.start();
 
@@ -754,12 +791,23 @@ export class RdioScannerService implements OnDestroy {
         }
     }
 
+    // the last notch stage feeds either the agc chain or the volume gain
+    // directly; rewiring here lets the toggle take effect mid-call
+    private applyAgc(): void {
+        const last = this.audioFilters[this.audioFilters.length - 1];
+
+        if (last && this.audioGain && this.agcCompressor) {
+            last.disconnect();
+            last.connect(this.agc ? this.agcCompressor : this.audioGain);
+        }
+    }
+
     // a peaking filter at 0 dB is an identity, which makes for a seamless
     // mid-call bypass without rewiring the audio graph
     private applyNotch(): void {
-        if (this.audioFilter) {
-            this.audioFilter.type = this.notch ? 'notch' : 'peaking';
-        }
+        this.audioFilters.forEach((filter) => {
+            filter.type = this.notch ? 'notch' : 'peaking';
+        });
     }
 
     private bootstrapAudio(): void {
@@ -773,12 +821,43 @@ export class RdioScannerService implements OnDestroy {
                 this.audioGain.gain.value = this.volume;
                 this.audioGain.connect(this.audioContext.destination);
 
-                this.audioFilter = this.audioContext.createBiquadFilter();
-                this.audioFilter.frequency.value = RdioScannerService.NOTCH_FREQUENCY;
-                this.audioFilter.Q.value = RdioScannerService.NOTCH_Q;
-                this.audioFilter.gain.value = 0;
+                for (let i = 0; i < RdioScannerService.NOTCH_STAGES; i++) {
+                    const filter = this.audioContext.createBiquadFilter();
+                    filter.frequency.value = RdioScannerService.NOTCH_FREQUENCY;
+                    filter.Q.value = RdioScannerService.NOTCH_Q;
+                    filter.gain.value = 0;
+
+                    if (i > 0) {
+                        this.audioFilters[i - 1].connect(filter);
+                    }
+
+                    this.audioFilters.push(filter);
+                }
+
+                this.agcCompressor = this.audioContext.createDynamicsCompressor();
+                this.agcCompressor.threshold.value = RdioScannerService.AGC_THRESHOLD;
+                this.agcCompressor.knee.value = RdioScannerService.AGC_KNEE;
+                this.agcCompressor.ratio.value = RdioScannerService.AGC_RATIO;
+                this.agcCompressor.attack.value = RdioScannerService.AGC_ATTACK;
+                this.agcCompressor.release.value = RdioScannerService.AGC_RELEASE;
+
+                this.agcMakeup = this.audioContext.createGain();
+                this.agcMakeup.gain.value = Math.pow(10, RdioScannerService.AGC_MAKEUP_GAIN_DB / 20);
+
+                this.agcLimiter = this.audioContext.createDynamicsCompressor();
+                this.agcLimiter.threshold.value = RdioScannerService.AGC_LIMITER_THRESHOLD;
+                this.agcLimiter.knee.value = 0;
+                this.agcLimiter.ratio.value = RdioScannerService.AGC_LIMITER_RATIO;
+                this.agcLimiter.attack.value = RdioScannerService.AGC_LIMITER_ATTACK;
+                this.agcLimiter.release.value = RdioScannerService.AGC_LIMITER_RELEASE;
+
+                this.agcCompressor.connect(this.agcMakeup);
+                this.agcMakeup.connect(this.agcLimiter);
+                this.agcLimiter.connect(this.audioGain);
+
                 this.applyNotch();
-                this.audioFilter.connect(this.audioGain);
+
+                this.applyAgc();
             }
 
             if (!this.beepContext) {
@@ -1217,6 +1296,10 @@ export class RdioScannerService implements OnDestroy {
         this.saveLivefeedMap();
 
         this.rebuildCategories();
+    }
+
+    private readAgc(): void {
+        this.agc = window?.localStorage?.getItem(RdioScannerService.LOCAL_STORAGE_KEY_AGC) === 'true';
     }
 
     private readNotch(): void {

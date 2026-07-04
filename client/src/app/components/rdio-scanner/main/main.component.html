@@ -1,6 +1,9 @@
 <div class="rdio-status">
     <div class="branding">{{ branding }}</div>
-    <mat-slide-toggle class="notch" title="800 Hz notch filter" [checked]="notch" (change)="setNotch($event.checked)">
+    <mat-slide-toggle class="notch" title="Automatic gain control (normalize volume)" [checked]="agc" (change)="setAgc($event.checked)">
+        AGC
+    </mat-slide-toggle>
+    <mat-slide-toggle class="notch" title="Emergency tone notch filter (993 Hz)" [checked]="notch" (change)="setNotch($event.checked)">
         NOTCH
     </mat-slide-toggle>
     <div class="led" [ngClass]="ledStyle"></div>
