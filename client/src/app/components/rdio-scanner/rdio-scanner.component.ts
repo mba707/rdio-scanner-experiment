@@ -19,11 +19,8 @@
 
 import { Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { MatSidenav } from '@angular/material/sidenav';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { timer } from 'rxjs';
 import { RdioScannerEvent, RdioScannerLivefeedMode } from './rdio-scanner';
 import { RdioScannerService } from './rdio-scanner.service';
-import { RdioScannerNativeComponent } from './native/native.component';
 
 @Component({
     selector: 'rdio-scanner',
@@ -40,7 +37,6 @@ export class RdioScannerComponent implements OnDestroy, OnInit {
     @ViewChild('selectPanel') private selectPanel: MatSidenav | undefined;
 
     constructor(
-        private matSnackBar: MatSnackBar,
         private ngElementRef: ElementRef,
         private rdioScannerService: RdioScannerService,
     ) { }
@@ -59,26 +55,7 @@ export class RdioScannerComponent implements OnDestroy, OnInit {
     }
 
     ngOnInit(): void {
-        /*
-         * BEGIN OF RED TAPE:
-         * 
-         * By modifying, deleting or disabling the following lines, you harm
-         * the open source project and its author.  Rdio Scanner represents a lot of
-         * investment in time, support, testing and hardware.
-         * 
-         * Be respectful, sponsor the project if you can, use native apps when possible.
-         * 
-         */
-        timer(10000).subscribe(() => {
-            const ua: string = navigator.userAgent;
-
-            if (ua.includes('Android') || ua.includes('iPad') || ua.includes('iPhone')) {
-                this.matSnackBar.openFromComponent(RdioScannerNativeComponent, { panelClass: 'snackbar-white' });
-            }
-        });
-        /**
-         * END OF RED TAPE.
-         */
+        // Native app banner disabled on this experimental fork.
     }
 
     scrollTop(e: HTMLElement): void {
