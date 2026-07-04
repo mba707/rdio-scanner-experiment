@@ -67,10 +67,13 @@ export class RdioScannerService implements OnDestroy {
     static LOCAL_STORAGE_KEY_LEGACY = 'rdio-scanner';
     static LOCAL_STORAGE_KEY_LFM = 'rdio-scanner-lfm';
     static LOCAL_STORAGE_KEY_PIN = 'rdio-scanner-pin';
+    static LOCAL_STORAGE_KEY_VOLUME = 'rdio-scanner-volume';
 
     event = new EventEmitter<RdioScannerEvent>();
 
     private audioContext: AudioContext | undefined;
+
+    private audioGain: GainNode | undefined;
 
     private audioSource: AudioBufferSourceNode | undefined;
     private audioSourceStartTime = NaN;
@@ -109,6 +112,8 @@ export class RdioScannerService implements OnDestroy {
 
     private skipDelay: Subscription | undefined;
 
+    private volume = 1;
+
     private websocket: WebSocket | undefined;
 
     constructor(
@@ -116,6 +121,8 @@ export class RdioScannerService implements OnDestroy {
         private router: Router,
         @Inject(DOCUMENT) private document: Document,
     ) {
+        this.readVolume();
+
         this.bootstrapAudio();
 
         this.initializeInstanceId();
@@ -235,7 +242,7 @@ export class RdioScannerService implements OnDestroy {
 
             const gn = context.createGain();
 
-            gn.gain.value = .1;
+            gn.gain.value = .1 * this.volume;
 
             gn.connect(context.destination);
 
@@ -261,6 +268,20 @@ export class RdioScannerService implements OnDestroy {
 
     clearPin(): void {
         window?.localStorage.removeItem(RdioScannerService.LOCAL_STORAGE_KEY_PIN);
+    }
+
+    getVolume(): number {
+        return this.volume;
+    }
+
+    setVolume(volume: number): void {
+        this.volume = Math.min(Math.max(volume, 0), 1);
+
+        if (this.audioContext && this.audioGain) {
+            this.audioGain.gain.setValueAtTime(this.volume, this.audioContext.currentTime);
+        }
+
+        window?.localStorage?.setItem(RdioScannerService.LOCAL_STORAGE_KEY_VOLUME, `${this.volume}`);
     }
 
     ngOnDestroy(): void {
@@ -500,7 +521,7 @@ export class RdioScannerService implements OnDestroy {
 
             this.audioSource = this.audioContext.createBufferSource();
             this.audioSource.buffer = buffer;
-            this.audioSource.connect(this.audioContext.destination);
+            this.audioSource.connect(this.audioGain || this.audioContext.destination);
             this.audioSource.onended = () => this.skip({ delay: true });
             this.audioSource.start();
 
@@ -717,6 +738,10 @@ export class RdioScannerService implements OnDestroy {
         const bootstrap = async () => {
             if (!this.audioContext) {
                 this.audioContext = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'playback' });
+
+                this.audioGain = this.audioContext.createGain();
+                this.audioGain.gain.value = this.volume;
+                this.audioGain.connect(this.audioContext.destination);
             }
 
             if (!this.beepContext) {
@@ -1155,6 +1180,16 @@ export class RdioScannerService implements OnDestroy {
         this.saveLivefeedMap();
 
         this.rebuildCategories();
+    }
+
+    private readVolume(): void {
+        const store = window?.localStorage?.getItem(RdioScannerService.LOCAL_STORAGE_KEY_VOLUME);
+
+        const volume = store === null ? NaN : parseFloat(store);
+
+        if (!isNaN(volume)) {
+            this.volume = Math.min(Math.max(volume, 0), 1);
+        }
     }
 
     private reconnectWebsocket(): void {
