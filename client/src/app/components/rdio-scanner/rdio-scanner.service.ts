@@ -67,11 +67,17 @@ export class RdioScannerService implements OnDestroy {
     static LOCAL_STORAGE_KEY_LEGACY = 'rdio-scanner';
     static LOCAL_STORAGE_KEY_LFM = 'rdio-scanner-lfm';
     static LOCAL_STORAGE_KEY_PIN = 'rdio-scanner-pin';
+    static LOCAL_STORAGE_KEY_NOTCH = 'rdio-scanner-notch';
     static LOCAL_STORAGE_KEY_VOLUME = 'rdio-scanner-volume';
+
+    static NOTCH_FREQUENCY = 800;
+    static NOTCH_Q = 3;
 
     event = new EventEmitter<RdioScannerEvent>();
 
     private audioContext: AudioContext | undefined;
+
+    private audioFilter: BiquadFilterNode | undefined;
 
     private audioGain: GainNode | undefined;
 
@@ -106,6 +112,8 @@ export class RdioScannerService implements OnDestroy {
     private livefeedMode = RdioScannerLivefeedMode.Offline;
     private livefeedPaused = false;
 
+    private notch = false;
+
     private playbackList: RdioScannerPlaybackList | undefined;
     private playbackPending: number | undefined;
     private playbackRefreshing = false;
@@ -121,6 +129,8 @@ export class RdioScannerService implements OnDestroy {
         private router: Router,
         @Inject(DOCUMENT) private document: Document,
     ) {
+        this.readNotch();
+
         this.readVolume();
 
         this.bootstrapAudio();
@@ -268,6 +278,18 @@ export class RdioScannerService implements OnDestroy {
 
     clearPin(): void {
         window?.localStorage.removeItem(RdioScannerService.LOCAL_STORAGE_KEY_PIN);
+    }
+
+    getNotch(): boolean {
+        return this.notch;
+    }
+
+    setNotch(notch: boolean): void {
+        this.notch = notch;
+
+        this.applyNotch();
+
+        window?.localStorage?.setItem(RdioScannerService.LOCAL_STORAGE_KEY_NOTCH, `${this.notch}`);
     }
 
     getVolume(): number {
@@ -521,7 +543,7 @@ export class RdioScannerService implements OnDestroy {
 
             this.audioSource = this.audioContext.createBufferSource();
             this.audioSource.buffer = buffer;
-            this.audioSource.connect(this.audioGain || this.audioContext.destination);
+            this.audioSource.connect(this.audioFilter || this.audioGain || this.audioContext.destination);
             this.audioSource.onended = () => this.skip({ delay: true });
             this.audioSource.start();
 
@@ -732,6 +754,14 @@ export class RdioScannerService implements OnDestroy {
         }
     }
 
+    // a peaking filter at 0 dB is an identity, which makes for a seamless
+    // mid-call bypass without rewiring the audio graph
+    private applyNotch(): void {
+        if (this.audioFilter) {
+            this.audioFilter.type = this.notch ? 'notch' : 'peaking';
+        }
+    }
+
     private bootstrapAudio(): void {
         const events = ['keydown', 'mousedown', 'touchstart'];
 
@@ -742,6 +772,13 @@ export class RdioScannerService implements OnDestroy {
                 this.audioGain = this.audioContext.createGain();
                 this.audioGain.gain.value = this.volume;
                 this.audioGain.connect(this.audioContext.destination);
+
+                this.audioFilter = this.audioContext.createBiquadFilter();
+                this.audioFilter.frequency.value = RdioScannerService.NOTCH_FREQUENCY;
+                this.audioFilter.Q.value = RdioScannerService.NOTCH_Q;
+                this.audioFilter.gain.value = 0;
+                this.applyNotch();
+                this.audioFilter.connect(this.audioGain);
             }
 
             if (!this.beepContext) {
@@ -1180,6 +1217,10 @@ export class RdioScannerService implements OnDestroy {
         this.saveLivefeedMap();
 
         this.rebuildCategories();
+    }
+
+    private readNotch(): void {
+        this.notch = window?.localStorage?.getItem(RdioScannerService.LOCAL_STORAGE_KEY_NOTCH) === 'true';
     }
 
     private readVolume(): void {

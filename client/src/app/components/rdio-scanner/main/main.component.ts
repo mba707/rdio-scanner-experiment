@@ -95,6 +95,8 @@ export class RdioScannerMainComponent implements OnDestroy, OnInit {
 
     linked = false;
 
+    notch = false;
+
     listeners = 0;
 
     livefeedOffline = true;
@@ -255,6 +257,8 @@ export class RdioScannerMainComponent implements OnDestroy, OnInit {
     ngOnInit(): void {
         this.syncClock();
 
+        this.notch = this.rdioScannerService.getNotch();
+
         this.volume = Math.round(this.rdioScannerService.getVolume() * 100);
 
         if (this.volume > 0) {
@@ -280,6 +284,16 @@ export class RdioScannerMainComponent implements OnDestroy, OnInit {
 
             this.updateDimmer();
         }
+    }
+
+    setNotch(notch: boolean): void {
+        this.notch = notch;
+
+        this.rdioScannerService.beep(notch ? RdioScannerBeepStyle.Activate : RdioScannerBeepStyle.Deactivate);
+
+        this.rdioScannerService.setNotch(notch);
+
+        this.updateDimmer();
     }
 
     setVolume(volume: number | null): void {
