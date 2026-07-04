@@ -114,6 +114,8 @@ export class RdioScannerMainComponent implements OnDestroy, OnInit {
 
     timeFormat = 'HH:mm';
 
+    volume = 100;
+
     get showListenersCount(): boolean {
         return this.config?.showListenersCount || false;
     }
@@ -133,6 +135,8 @@ export class RdioScannerMainComponent implements OnDestroy, OnInit {
     private dimmerTimer: Subscription | undefined;
 
     private eventSubscription = this.rdioScannerService.event.subscribe((event: RdioScannerEvent) => this.eventHandler(event));
+
+    private volumePriorToMute = 100;
 
     constructor(
         private rdioScannerService: RdioScannerService,
@@ -250,6 +254,12 @@ export class RdioScannerMainComponent implements OnDestroy, OnInit {
 
     ngOnInit(): void {
         this.syncClock();
+
+        this.volume = Math.round(this.rdioScannerService.getVolume() * 100);
+
+        if (this.volume > 0) {
+            this.volumePriorToMute = this.volume;
+        }
     }
 
     pause(): void {
@@ -270,6 +280,22 @@ export class RdioScannerMainComponent implements OnDestroy, OnInit {
 
             this.updateDimmer();
         }
+    }
+
+    setVolume(volume: number | null): void {
+        this.volume = typeof volume === 'number' ? Math.min(Math.max(volume, 0), 100) : 100;
+
+        if (this.volume > 0) {
+            this.volumePriorToMute = this.volume;
+        }
+
+        this.rdioScannerService.setVolume(this.volume / 100);
+    }
+
+    toggleMute(): void {
+        this.setVolume(this.volume === 0 ? this.volumePriorToMute : 0);
+
+        this.updateDimmer();
     }
 
     replay(): void {
