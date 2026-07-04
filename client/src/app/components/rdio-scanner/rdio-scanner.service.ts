@@ -70,14 +70,17 @@ export class RdioScannerService implements OnDestroy {
     static LOCAL_STORAGE_KEY_NOTCH = 'rdio-scanner-notch';
     static LOCAL_STORAGE_KEY_VOLUME = 'rdio-scanner-volume';
 
-    static NOTCH_FREQUENCY = 800;
-    static NOTCH_Q = 3;
+    // tuned to suppress loud emergency alert tones around 1 kHz while
+    // preserving voice: ~0.56 octave wide (Q ~2.5), two cascaded stages
+    static NOTCH_FREQUENCY = 993;
+    static NOTCH_Q = 2.5;
+    static NOTCH_STAGES = 2;
 
     event = new EventEmitter<RdioScannerEvent>();
 
     private audioContext: AudioContext | undefined;
 
-    private audioFilter: BiquadFilterNode | undefined;
+    private audioFilters: BiquadFilterNode[] = [];
 
     private audioGain: GainNode | undefined;
 
@@ -543,7 +546,7 @@ export class RdioScannerService implements OnDestroy {
 
             this.audioSource = this.audioContext.createBufferSource();
             this.audioSource.buffer = buffer;
-            this.audioSource.connect(this.audioFilter || this.audioGain || this.audioContext.destination);
+            this.audioSource.connect(this.audioFilters[0] || this.audioGain || this.audioContext.destination);
             this.audioSource.onended = () => this.skip({ delay: true });
             this.audioSource.start();
 
@@ -757,9 +760,9 @@ export class RdioScannerService implements OnDestroy {
     // a peaking filter at 0 dB is an identity, which makes for a seamless
     // mid-call bypass without rewiring the audio graph
     private applyNotch(): void {
-        if (this.audioFilter) {
-            this.audioFilter.type = this.notch ? 'notch' : 'peaking';
-        }
+        this.audioFilters.forEach((filter) => {
+            filter.type = this.notch ? 'notch' : 'peaking';
+        });
     }
 
     private bootstrapAudio(): void {
@@ -773,12 +776,19 @@ export class RdioScannerService implements OnDestroy {
                 this.audioGain.gain.value = this.volume;
                 this.audioGain.connect(this.audioContext.destination);
 
-                this.audioFilter = this.audioContext.createBiquadFilter();
-                this.audioFilter.frequency.value = RdioScannerService.NOTCH_FREQUENCY;
-                this.audioFilter.Q.value = RdioScannerService.NOTCH_Q;
-                this.audioFilter.gain.value = 0;
+                for (let i = 0; i < RdioScannerService.NOTCH_STAGES; i++) {
+                    const filter = this.audioContext.createBiquadFilter();
+                    filter.frequency.value = RdioScannerService.NOTCH_FREQUENCY;
+                    filter.Q.value = RdioScannerService.NOTCH_Q;
+                    filter.gain.value = 0;
+                    this.audioFilters.push(filter);
+                }
+
+                this.audioFilters.forEach((filter, i) => {
+                    filter.connect(i + 1 < this.audioFilters.length ? this.audioFilters[i + 1] : this.audioGain as GainNode);
+                });
+
                 this.applyNotch();
-                this.audioFilter.connect(this.audioGain);
             }
 
             if (!this.beepContext) {
