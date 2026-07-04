@@ -47,6 +47,8 @@ export class RdioScannerMainComponent implements OnDestroy, OnInit {
     auth = false;
     authForm = this.ngFormBuilder.group({ password: [] });
 
+    agc = false;
+
     avoided = false;
 
     branding = '';
@@ -257,6 +259,8 @@ export class RdioScannerMainComponent implements OnDestroy, OnInit {
     ngOnInit(): void {
         this.syncClock();
 
+        this.agc = this.rdioScannerService.getAgc();
+
         this.notch = this.rdioScannerService.getNotch();
 
         this.volume = Math.round(this.rdioScannerService.getVolume() * 100);
@@ -284,6 +288,16 @@ export class RdioScannerMainComponent implements OnDestroy, OnInit {
 
             this.updateDimmer();
         }
+    }
+
+    setAgc(agc: boolean): void {
+        this.agc = agc;
+
+        this.rdioScannerService.beep(agc ? RdioScannerBeepStyle.Activate : RdioScannerBeepStyle.Deactivate);
+
+        this.rdioScannerService.setAgc(agc);
+
+        this.updateDimmer();
     }
 
     setNotch(notch: boolean): void {
