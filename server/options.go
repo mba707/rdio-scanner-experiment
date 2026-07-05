@@ -38,6 +38,7 @@ type Options struct {
 	Email                       string  `json:"email"`
 	KeypadBeeps                 string  `json:"keypadBeeps"`
 	MaxClients                  uint    `json:"maxClients"`
+	MaxVolume                   float64 `json:"maxVolume"`
 	NotchFrequency              float64 `json:"notchFrequency"`
 	NotchQ                      float64 `json:"notchQ"`
 	PlaybackGoesLive            bool    `json:"playbackGoesLive"`
@@ -164,6 +165,13 @@ func (options *Options) FromMap(m map[string]any) *Options {
 		options.MaxClients = defaults.options.maxClients
 	}
 
+	switch v := m["maxVolume"].(type) {
+	case float64:
+		options.MaxVolume = v
+	default:
+		options.MaxVolume = defaults.options.maxVolume
+	}
+
 	switch v := m["notchFrequency"].(type) {
 	case float64:
 		options.NotchFrequency = v
@@ -252,6 +260,7 @@ func (options *Options) Read(db *Database) error {
 	options.DuplicateDetectionTimeFrame = defaults.options.duplicateDetectionTimeFrame
 	options.KeypadBeeps = defaults.options.keypadBeeps
 	options.MaxClients = defaults.options.maxClients
+	options.MaxVolume = defaults.options.maxVolume
 	options.NotchFrequency = defaults.options.notchFrequency
 	options.NotchQ = defaults.options.notchQ
 	options.PlaybackGoesLive = defaults.options.playbackGoesLive
@@ -344,6 +353,11 @@ func (options *Options) Read(db *Database) error {
 			switch v := m["maxClients"].(type) {
 			case float64:
 				options.MaxClients = uint(v)
+			}
+
+			switch v := m["maxVolume"].(type) {
+			case float64:
+				options.MaxVolume = v
 			}
 
 			switch v := m["notchFrequency"].(type) {
@@ -456,6 +470,7 @@ func (options *Options) Write(db *Database) error {
 		"email":                       options.Email,
 		"keypadBeeps":                 options.KeypadBeeps,
 		"maxClients":                  options.MaxClients,
+		"maxVolume":                   options.MaxVolume,
 		"notchFrequency":              options.NotchFrequency,
 		"notchQ":                      options.NotchQ,
 		"playbackGoesLive":            options.PlaybackGoesLive,
