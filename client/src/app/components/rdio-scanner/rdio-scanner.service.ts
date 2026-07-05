@@ -78,13 +78,14 @@ export class RdioScannerService implements OnDestroy {
     static NOTCH_STAGES = 1;
 
     // agc: compress the loud-vs-quiet range, lift everything with makeup
-    // gain, then hard-limit as a clipping safety net
-    static AGC_THRESHOLD = -50;
+    // gain, then hard-limit as a clipping safety net; threshold, ratio and
+    // makeup gain are admin-configurable, these are the fallback defaults
+    static AGC_THRESHOLD = -40;
     static AGC_KNEE = 10;
-    static AGC_RATIO = 12;
+    static AGC_RATIO = 6;
     static AGC_ATTACK = 0.003;
     static AGC_RELEASE = 0.25;
-    static AGC_MAKEUP_GAIN_DB = 25;
+    static AGC_MAKEUP_GAIN_DB = 15;
     static AGC_LIMITER_THRESHOLD = -3;
     static AGC_LIMITER_RATIO = 20;
     static AGC_LIMITER_ATTACK = 0.001;
@@ -791,6 +792,27 @@ export class RdioScannerService implements OnDestroy {
         }
     }
 
+    // push the admin-configured (or default) notch and agc parameters onto
+    // the live audio nodes; called on bootstrap and whenever config arrives
+    private applyAudioParameters(): void {
+        const frequency = this.config.notchFrequency ?? RdioScannerService.NOTCH_FREQUENCY;
+        const q = this.config.notchQ ?? RdioScannerService.NOTCH_Q;
+
+        this.audioFilters.forEach((filter) => {
+            filter.frequency.value = frequency;
+            filter.Q.value = q;
+        });
+
+        if (this.agcCompressor) {
+            this.agcCompressor.threshold.value = this.config.agcThreshold ?? RdioScannerService.AGC_THRESHOLD;
+            this.agcCompressor.ratio.value = this.config.agcRatio ?? RdioScannerService.AGC_RATIO;
+        }
+
+        if (this.agcMakeup) {
+            this.agcMakeup.gain.value = Math.pow(10, (this.config.agcMakeupGain ?? RdioScannerService.AGC_MAKEUP_GAIN_DB) / 20);
+        }
+    }
+
     // the last notch stage feeds either the agc chain or the volume gain
     // directly; rewiring here lets the toggle take effect mid-call
     private applyAgc(): void {
@@ -854,6 +876,8 @@ export class RdioScannerService implements OnDestroy {
                 this.agcCompressor.connect(this.agcMakeup);
                 this.agcMakeup.connect(this.agcLimiter);
                 this.agcLimiter.connect(this.audioGain);
+
+                this.applyAudioParameters();
 
                 this.applyNotch();
 
@@ -1045,8 +1069,19 @@ export class RdioScannerService implements OnDestroy {
                     const config = message[1];
 
                     this.config = {
+                        agcMakeupGain: typeof config.agcMakeupGain === 'number'
+                            ? config.agcMakeupGain
+                            : RdioScannerService.AGC_MAKEUP_GAIN_DB,
+                        agcRatio: typeof config.agcRatio === 'number' ? config.agcRatio : RdioScannerService.AGC_RATIO,
+                        agcThreshold: typeof config.agcThreshold === 'number'
+                            ? config.agcThreshold
+                            : RdioScannerService.AGC_THRESHOLD,
                         branding: typeof config.branding === 'string' ? config.branding : '',
                         dimmerDelay: typeof config.dimmerDelay === 'number' ? config.dimmerDelay : 5000,
+                        notchFrequency: typeof config.notchFrequency === 'number'
+                            ? config.notchFrequency
+                            : RdioScannerService.NOTCH_FREQUENCY,
+                        notchQ: typeof config.notchQ === 'number' ? config.notchQ : RdioScannerService.NOTCH_Q,
                         email: typeof config.email === 'string' ? config.email : '',
                         groups: typeof config.groups !== null && typeof config.groups === 'object' ? config.groups : {},
                         keypadBeeps: config.keypadBeeps !== null && typeof config.keypadBeeps === 'object' ? config.keypadBeeps : {},
@@ -1061,6 +1096,8 @@ export class RdioScannerService implements OnDestroy {
                     if (typeof config.afs === 'string' && config.afs.length) {
                         this.config['afs'] = config.afs;
                     }
+
+                    this.applyAudioParameters();
 
                     this.rebuildLivefeedMap();
 

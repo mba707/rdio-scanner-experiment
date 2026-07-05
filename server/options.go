@@ -25,23 +25,28 @@ import (
 )
 
 type Options struct {
-	AfsSystems                  string `json:"afsSystems"`
-	AudioConversion             uint   `json:"audioConversion"`
-	AutoPopulate                bool   `json:"autoPopulate"`
-	Branding                    string `json:"branding"`
-	DimmerDelay                 uint   `json:"dimmerDelay"`
-	DisableDuplicateDetection   bool   `json:"disableDuplicateDetection"`
-	DuplicateDetectionTimeFrame uint   `json:"duplicateDetectionTimeFrame"`
-	Email                       string `json:"email"`
-	KeypadBeeps                 string `json:"keypadBeeps"`
-	MaxClients                  uint   `json:"maxClients"`
-	PlaybackGoesLive            bool   `json:"playbackGoesLive"`
-	PruneDays                   uint   `json:"pruneDays"`
-	SearchPatchedTalkgroups     bool   `json:"searchPatchedTalkgroups"`
-	ShowListenersCount          bool   `json:"showListenersCount"`
-	SortTalkgroups              bool   `json:"sortTalkgroups"`
-	TagsToggle                  bool   `json:"tagsToggle"`
-	Time12hFormat               bool   `json:"time12hFormat"`
+	AfsSystems                  string  `json:"afsSystems"`
+	AgcMakeupGain               float64 `json:"agcMakeupGain"`
+	AgcRatio                    float64 `json:"agcRatio"`
+	AgcThreshold                float64 `json:"agcThreshold"`
+	AudioConversion             uint    `json:"audioConversion"`
+	AutoPopulate                bool    `json:"autoPopulate"`
+	Branding                    string  `json:"branding"`
+	DimmerDelay                 uint    `json:"dimmerDelay"`
+	DisableDuplicateDetection   bool    `json:"disableDuplicateDetection"`
+	DuplicateDetectionTimeFrame uint    `json:"duplicateDetectionTimeFrame"`
+	Email                       string  `json:"email"`
+	KeypadBeeps                 string  `json:"keypadBeeps"`
+	MaxClients                  uint    `json:"maxClients"`
+	NotchFrequency              float64 `json:"notchFrequency"`
+	NotchQ                      float64 `json:"notchQ"`
+	PlaybackGoesLive            bool    `json:"playbackGoesLive"`
+	PruneDays                   uint    `json:"pruneDays"`
+	SearchPatchedTalkgroups     bool    `json:"searchPatchedTalkgroups"`
+	ShowListenersCount          bool    `json:"showListenersCount"`
+	SortTalkgroups              bool    `json:"sortTalkgroups"`
+	TagsToggle                  bool    `json:"tagsToggle"`
+	Time12hFormat               bool    `json:"time12hFormat"`
 	adminPassword               string
 	adminPasswordNeedChange     bool
 	mutex                       sync.Mutex
@@ -68,6 +73,27 @@ func (options *Options) FromMap(m map[string]any) *Options {
 	switch v := m["afsSystems"].(type) {
 	case string:
 		options.AfsSystems = v
+	}
+
+	switch v := m["agcMakeupGain"].(type) {
+	case float64:
+		options.AgcMakeupGain = v
+	default:
+		options.AgcMakeupGain = defaults.options.agcMakeupGain
+	}
+
+	switch v := m["agcRatio"].(type) {
+	case float64:
+		options.AgcRatio = v
+	default:
+		options.AgcRatio = defaults.options.agcRatio
+	}
+
+	switch v := m["agcThreshold"].(type) {
+	case float64:
+		options.AgcThreshold = v
+	default:
+		options.AgcThreshold = defaults.options.agcThreshold
 	}
 
 	switch v := m["audioConversion"].(type) {
@@ -138,6 +164,20 @@ func (options *Options) FromMap(m map[string]any) *Options {
 		options.MaxClients = defaults.options.maxClients
 	}
 
+	switch v := m["notchFrequency"].(type) {
+	case float64:
+		options.NotchFrequency = v
+	default:
+		options.NotchFrequency = defaults.options.notchFrequency
+	}
+
+	switch v := m["notchQ"].(type) {
+	case float64:
+		options.NotchQ = v
+	default:
+		options.NotchQ = defaults.options.notchQ
+	}
+
 	switch v := m["playbackGoesLive"].(type) {
 	case bool:
 		options.PlaybackGoesLive = v
@@ -202,6 +242,9 @@ func (options *Options) Read(db *Database) error {
 
 	options.adminPassword = string(defaultPassword)
 	options.adminPasswordNeedChange = defaults.adminPasswordNeedChange
+	options.AgcMakeupGain = defaults.options.agcMakeupGain
+	options.AgcRatio = defaults.options.agcRatio
+	options.AgcThreshold = defaults.options.agcThreshold
 	options.AudioConversion = defaults.options.audioConversion
 	options.AutoPopulate = defaults.options.autoPopulate
 	options.DimmerDelay = defaults.options.dimmerDelay
@@ -209,6 +252,8 @@ func (options *Options) Read(db *Database) error {
 	options.DuplicateDetectionTimeFrame = defaults.options.duplicateDetectionTimeFrame
 	options.KeypadBeeps = defaults.options.keypadBeeps
 	options.MaxClients = defaults.options.maxClients
+	options.NotchFrequency = defaults.options.notchFrequency
+	options.NotchQ = defaults.options.notchQ
 	options.PlaybackGoesLive = defaults.options.playbackGoesLive
 	options.PruneDays = defaults.options.pruneDays
 	options.SearchPatchedTalkgroups = defaults.options.searchPatchedTalkgroups
@@ -239,6 +284,21 @@ func (options *Options) Read(db *Database) error {
 			switch v := m["afsSystems"].(type) {
 			case string:
 				options.AfsSystems = v
+			}
+
+			switch v := m["agcMakeupGain"].(type) {
+			case float64:
+				options.AgcMakeupGain = v
+			}
+
+			switch v := m["agcRatio"].(type) {
+			case float64:
+				options.AgcRatio = v
+			}
+
+			switch v := m["agcThreshold"].(type) {
+			case float64:
+				options.AgcThreshold = v
 			}
 
 			switch v := m["audioConversion"].(type) {
@@ -284,6 +344,16 @@ func (options *Options) Read(db *Database) error {
 			switch v := m["maxClients"].(type) {
 			case float64:
 				options.MaxClients = uint(v)
+			}
+
+			switch v := m["notchFrequency"].(type) {
+			case float64:
+				options.NotchFrequency = v
+			}
+
+			switch v := m["notchQ"].(type) {
+			case float64:
+				options.NotchQ = v
 			}
 
 			switch v := m["playbackGoesLive"].(type) {
@@ -374,6 +444,9 @@ func (options *Options) Write(db *Database) error {
 
 	if b, err = json.Marshal(map[string]any{
 		"afsSystems":                  options.AfsSystems,
+		"agcMakeupGain":               options.AgcMakeupGain,
+		"agcRatio":                    options.AgcRatio,
+		"agcThreshold":                options.AgcThreshold,
 		"audioConversion":             options.AudioConversion,
 		"autoPopulate":                options.AutoPopulate,
 		"branding":                    options.Branding,
@@ -383,6 +456,8 @@ func (options *Options) Write(db *Database) error {
 		"email":                       options.Email,
 		"keypadBeeps":                 options.KeypadBeeps,
 		"maxClients":                  options.MaxClients,
+		"notchFrequency":              options.NotchFrequency,
+		"notchQ":                      options.NotchQ,
 		"playbackGoesLive":            options.PlaybackGoesLive,
 		"pruneDays":                   options.PruneDays,
 		"searchPatchedTalkgroups":     options.SearchPatchedTalkgroups,

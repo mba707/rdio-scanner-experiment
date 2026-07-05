@@ -50,6 +50,9 @@ type DefaultDownstream struct {
 }
 
 type DefaultOptions struct {
+	agcMakeupGain               float64
+	agcRatio                    float64
+	agcThreshold                float64
 	autoPopulate                bool
 	audioConversion             uint
 	dimmerDelay                 uint
@@ -57,6 +60,8 @@ type DefaultOptions struct {
 	duplicateDetectionTimeFrame uint
 	keypadBeeps                 string
 	maxClients                  uint
+	notchFrequency              float64
+	notchQ                      float64
 	playbackGoesLive            bool
 	pruneDays                   uint
 	searchPatchedTalkgroups     bool
@@ -95,6 +100,9 @@ var defaults Defaults = Defaults{
 	},
 	keypadBeeps: "uniden",
 	options: DefaultOptions{
+		agcMakeupGain:               15,
+		agcRatio:                    6,
+		agcThreshold:                -40,
 		audioConversion:             AUDIO_CONVERSION_ENABLED,
 		autoPopulate:                true,
 		dimmerDelay:                 5000,
@@ -102,6 +110,8 @@ var defaults Defaults = Defaults{
 		duplicateDetectionTimeFrame: 500,
 		keypadBeeps:                 "uniden",
 		maxClients:                  200,
+		notchFrequency:              993,
+		notchQ:                      2.5,
 		playbackGoesLive:            false,
 		pruneDays:                   7,
 		searchPatchedTalkgroups:     false,
