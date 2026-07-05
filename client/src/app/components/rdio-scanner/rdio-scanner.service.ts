@@ -91,6 +91,12 @@ export class RdioScannerService implements OnDestroy {
     static AGC_LIMITER_ATTACK = 0.001;
     static AGC_LIMITER_RELEASE = 0.1;
 
+    // the slider position maps to gain through a squared (perceptual)
+    // curve, scaled so a full slider reaches the admin-configured maximum
+    // volume percentage instead of the browser's full output
+    static MAX_VOLUME = 50;
+    static VOLUME_CURVE = 2;
+
     event = new EventEmitter<RdioScannerEvent>();
 
     private audioContext: AudioContext | undefined;
@@ -338,7 +344,7 @@ export class RdioScannerService implements OnDestroy {
         this.volume = Math.min(Math.max(volume, 0), 1);
 
         if (this.audioContext && this.audioGain) {
-            this.audioGain.gain.setValueAtTime(this.volume, this.audioContext.currentTime);
+            this.audioGain.gain.setValueAtTime(this.outputGain(), this.audioContext.currentTime);
         }
 
         window?.localStorage?.setItem(RdioScannerService.LOCAL_STORAGE_KEY_VOLUME, `${this.volume}`);
@@ -811,6 +817,10 @@ export class RdioScannerService implements OnDestroy {
         if (this.agcMakeup) {
             this.agcMakeup.gain.value = Math.pow(10, (this.config.agcMakeupGain ?? RdioScannerService.AGC_MAKEUP_GAIN_DB) / 20);
         }
+
+        if (this.audioContext && this.audioGain) {
+            this.audioGain.gain.setValueAtTime(this.outputGain(), this.audioContext.currentTime);
+        }
     }
 
     // the last notch stage feeds either the agc chain or the volume gain
@@ -840,7 +850,7 @@ export class RdioScannerService implements OnDestroy {
                 this.audioContext = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'playback' });
 
                 this.audioGain = this.audioContext.createGain();
-                this.audioGain.gain.value = this.volume;
+                this.audioGain.gain.value = this.outputGain();
                 this.audioGain.connect(this.audioContext.destination);
 
                 for (let i = 0; i < RdioScannerService.NOTCH_STAGES; i++) {
@@ -1085,6 +1095,7 @@ export class RdioScannerService implements OnDestroy {
                         email: typeof config.email === 'string' ? config.email : '',
                         groups: typeof config.groups !== null && typeof config.groups === 'object' ? config.groups : {},
                         keypadBeeps: config.keypadBeeps !== null && typeof config.keypadBeeps === 'object' ? config.keypadBeeps : {},
+                        maxVolume: typeof config.maxVolume === 'number' ? config.maxVolume : RdioScannerService.MAX_VOLUME,
                         playbackGoesLive: typeof config.playbackGoesLive === 'boolean' ? config.playbackGoesLive : false,
                         showListenersCount: typeof config.showListenersCount === 'boolean' ? config.showListenersCount : false,
                         systems: Array.isArray(config.systems) ? config.systems.slice() : [],
@@ -1337,6 +1348,12 @@ export class RdioScannerService implements OnDestroy {
 
     private readAgc(): void {
         this.agc = window?.localStorage?.getItem(RdioScannerService.LOCAL_STORAGE_KEY_AGC) === 'true';
+    }
+
+    private outputGain(): number {
+        const max = Math.min(Math.max(this.config.maxVolume ?? RdioScannerService.MAX_VOLUME, 1), 100) / 100;
+
+        return max * Math.pow(this.volume, RdioScannerService.VOLUME_CURVE);
     }
 
     private readNotch(): void {

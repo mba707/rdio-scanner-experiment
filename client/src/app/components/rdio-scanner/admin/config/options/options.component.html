@@ -182,6 +182,22 @@
     </div>
     <div class="row">
         <p>
+            <span class="mat-body">Maximum Volume</span><br>
+            <span class="mat-caption">Output level in percent of the browser's full volume when the web player's
+                volume slider is at maximum. Lower this if the app is too loud with the slider all the way up.</span>
+        </p>
+        <mat-form-field>
+            <input type="number" min="1" max="100" step="1" matInput formControlName="maxVolume">
+            <mat-error *ngIf="form?.get('maxVolume')?.hasError('required')">
+                Maximum volume is required
+            </mat-error>
+            <mat-error *ngIf="form?.get('maxVolume')?.hasError('min') || form?.get('maxVolume')?.hasError('max')">
+                Maximum volume must be between 1 and 100
+            </mat-error>
+        </mat-form-field>
+    </div>
+    <div class="row">
+        <p>
             <span class="mat-body">Notch Filter Frequency</span><br>
             <span class="mat-caption">Center frequency in hertz of the notch filter applied when the NOTCH toggle is
                 on. Set it to the frequency of the tone to suppress.</span>

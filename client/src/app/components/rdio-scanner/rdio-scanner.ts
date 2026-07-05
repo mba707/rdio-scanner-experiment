@@ -101,6 +101,7 @@ export interface RdioScannerConfig {
     email?: string;
     groups: { [key: string]: { [key: number]: number[] } };
     keypadBeeps: RdioScannerKeypadBeeps | false;
+    maxVolume?: number;
     notchFrequency?: number;
     notchQ?: number;
     playbackGoesLive: boolean;

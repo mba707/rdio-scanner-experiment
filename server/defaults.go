@@ -60,6 +60,7 @@ type DefaultOptions struct {
 	duplicateDetectionTimeFrame uint
 	keypadBeeps                 string
 	maxClients                  uint
+	maxVolume                   float64
 	notchFrequency              float64
 	notchQ                      float64
 	playbackGoesLive            bool
@@ -110,6 +111,7 @@ var defaults Defaults = Defaults{
 		duplicateDetectionTimeFrame: 500,
 		keypadBeeps:                 "uniden",
 		maxClients:                  200,
+		maxVolume:                   50,
 		notchFrequency:              993,
 		notchQ:                      2.5,
 		playbackGoesLive:            false,
