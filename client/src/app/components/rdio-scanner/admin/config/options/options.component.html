@@ -23,6 +23,54 @@
     </div>
     <div class="row">
         <p>
+            <span class="mat-body">AGC Makeup Gain</span><br>
+            <span class="mat-caption">Boost in decibels applied after compression when the AGC toggle is on. Higher
+                values raise quiet transmissions more, but also raise background noise between words.</span>
+        </p>
+        <mat-form-field>
+            <input type="number" min="0" max="40" step="1" matInput formControlName="agcMakeupGain">
+            <mat-error *ngIf="form?.get('agcMakeupGain')?.hasError('required')">
+                AGC makeup gain is required
+            </mat-error>
+            <mat-error *ngIf="form?.get('agcMakeupGain')?.hasError('min') || form?.get('agcMakeupGain')?.hasError('max')">
+                AGC makeup gain must be between 0 and 40 dB
+            </mat-error>
+        </mat-form-field>
+    </div>
+    <div class="row">
+        <p>
+            <span class="mat-body">AGC Ratio</span><br>
+            <span class="mat-caption">Compression ratio of the AGC. Higher values flatten loud and quiet transmissions
+                closer together.</span>
+        </p>
+        <mat-form-field>
+            <input type="number" min="1" max="20" step="1" matInput formControlName="agcRatio">
+            <mat-error *ngIf="form?.get('agcRatio')?.hasError('required')">
+                AGC ratio is required
+            </mat-error>
+            <mat-error *ngIf="form?.get('agcRatio')?.hasError('min') || form?.get('agcRatio')?.hasError('max')">
+                AGC ratio must be between 1 and 20
+            </mat-error>
+        </mat-form-field>
+    </div>
+    <div class="row">
+        <p>
+            <span class="mat-body">AGC Threshold</span><br>
+            <span class="mat-caption">Level in decibels above which the AGC starts compressing. Lower (more negative)
+                values compress more of the audio.</span>
+        </p>
+        <mat-form-field>
+            <input type="number" min="-100" max="0" step="1" matInput formControlName="agcThreshold">
+            <mat-error *ngIf="form?.get('agcThreshold')?.hasError('required')">
+                AGC threshold is required
+            </mat-error>
+            <mat-error *ngIf="form?.get('agcThreshold')?.hasError('min') || form?.get('agcThreshold')?.hasError('max')">
+                AGC threshold must be between -100 and 0 dB
+            </mat-error>
+        </mat-form-field>
+    </div>
+    <div class="row">
+        <p>
             <span class="mat-body">Audio Conversion</span><br>
             <span class="mat-caption">Convert incoming audio files to H.264 m4a with ffmpeg.</span>
         </p>
@@ -129,6 +177,38 @@
             </mat-error>
             <mat-error *ngIf="form?.get('maxClients')?.hasError('min')">
                 Max clients is invalid
+            </mat-error>
+        </mat-form-field>
+    </div>
+    <div class="row">
+        <p>
+            <span class="mat-body">Notch Filter Frequency</span><br>
+            <span class="mat-caption">Center frequency in hertz of the notch filter applied when the NOTCH toggle is
+                on. Set it to the frequency of the tone to suppress.</span>
+        </p>
+        <mat-form-field>
+            <input type="number" min="20" max="20000" step="1" matInput formControlName="notchFrequency">
+            <mat-error *ngIf="form?.get('notchFrequency')?.hasError('required')">
+                Notch frequency is required
+            </mat-error>
+            <mat-error *ngIf="form?.get('notchFrequency')?.hasError('min') || form?.get('notchFrequency')?.hasError('max')">
+                Notch frequency must be between 20 and 20000 Hz
+            </mat-error>
+        </mat-form-field>
+    </div>
+    <div class="row">
+        <p>
+            <span class="mat-body">Notch Filter Width (Q)</span><br>
+            <span class="mat-caption">Quality factor of the notch filter. Lower values widen the notch (catch more
+                around the center frequency but affect voice more); higher values narrow it.</span>
+        </p>
+        <mat-form-field>
+            <input type="number" min="0.1" max="100" step="0.1" matInput formControlName="notchQ">
+            <mat-error *ngIf="form?.get('notchQ')?.hasError('required')">
+                Notch Q is required
+            </mat-error>
+            <mat-error *ngIf="form?.get('notchQ')?.hasError('min') || form?.get('notchQ')?.hasError('max')">
+                Notch Q must be between 0.1 and 100
             </mat-error>
         </mat-form-field>
     </div>

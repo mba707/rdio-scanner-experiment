@@ -93,11 +93,16 @@ export enum RdioScannerCategoryType {
 
 export interface RdioScannerConfig {
     afs?: string;
+    agcMakeupGain?: number;
+    agcRatio?: number;
+    agcThreshold?: number;
     branding?: string;
     dimmerDelay: number | false;
     email?: string;
     groups: { [key: string]: { [key: number]: number[] } };
     keypadBeeps: RdioScannerKeypadBeeps | false;
+    notchFrequency?: number;
+    notchQ?: number;
     playbackGoesLive: boolean;
     showListenersCount: boolean;
     systems: RdioScannerSystem[];

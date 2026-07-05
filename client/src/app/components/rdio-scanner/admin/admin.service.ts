@@ -130,6 +130,9 @@ export interface LogsQueryOptions {
 
 export interface Options {
     afsSystems?: string;
+    agcMakeupGain?: number;
+    agcRatio?: number;
+    agcThreshold?: number;
     audioConversion?: 0 | 1 | 2 | 3;
     autoPopulate?: boolean;
     branding?: string;
@@ -139,6 +142,8 @@ export interface Options {
     email?: string;
     keypadBeeps?: string;
     maxClients?: number;
+    notchFrequency?: number;
+    notchQ?: number;
     playbackGoesLive?: boolean;
     pruneDays?: number;
     searchPatchedTalkgroups?: boolean;
@@ -497,6 +502,9 @@ export class RdioScannerAdminService implements OnDestroy {
     newOptionsForm(options?: Options): FormGroup {
         return this.ngFormBuilder.group({
             afsSystems: [options?.afsSystems, this.validateAfsSystems()],
+            agcMakeupGain: [options?.agcMakeupGain, [Validators.required, Validators.min(0), Validators.max(40)]],
+            agcRatio: [options?.agcRatio, [Validators.required, Validators.min(1), Validators.max(20)]],
+            agcThreshold: [options?.agcThreshold, [Validators.required, Validators.min(-100), Validators.max(0)]],
             audioConversion: [options?.audioConversion],
             autoPopulate: [options?.autoPopulate],
             branding: [options?.branding],
@@ -506,6 +514,8 @@ export class RdioScannerAdminService implements OnDestroy {
             email: [options?.email],
             keypadBeeps: [options?.keypadBeeps, Validators.required],
             maxClients: [options?.maxClients, [Validators.required, Validators.min(1)]],
+            notchFrequency: [options?.notchFrequency, [Validators.required, Validators.min(20), Validators.max(20000)]],
+            notchQ: [options?.notchQ, [Validators.required, Validators.min(0.1), Validators.max(100)]],
             playbackGoesLive: [options?.playbackGoesLive],
             pruneDays: [options?.pruneDays, [Validators.required, Validators.min(0)]],
 			searchPatchedTalkgroups: [options?.searchPatchedTalkgroups],

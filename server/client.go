@@ -178,11 +178,16 @@ func (client *Client) SendConfig(groups *Groups, options *Options, systems *Syst
 	client.TagsMap = tags.GetTagsMap(&client.SystemsMap)
 
 	var payload = map[string]any{
+		"agcMakeupGain":      options.AgcMakeupGain,
+		"agcRatio":           options.AgcRatio,
+		"agcThreshold":       options.AgcThreshold,
 		"branding":           options.Branding,
 		"dimmerDelay":        options.DimmerDelay,
 		"email":              options.Email,
 		"groups":             client.GroupsMap,
 		"keypadBeeps":        GetKeypadBeeps(options),
+		"notchFrequency":     options.NotchFrequency,
+		"notchQ":             options.NotchQ,
 		"playbackGoesLive":   options.PlaybackGoesLive,
 		"showListenersCount": options.ShowListenersCount,
 		"systems":            client.SystemsMap,
